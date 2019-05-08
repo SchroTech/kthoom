@@ -204,27 +204,7 @@ class KthoomApp {
       {
         // In this case, we're going to read in a json list of books to prepopulate
         // the book stack with a json file of books to read
-
-        let readingList = [];
-
-        const bs_xhr = new XMLHttpRequest();
-
-        bs_xhr.open('GET', bookUri.substr(10), false);
-
-        bs_xhr.onreadystatechange = function()
-        {
-          if (this.readyState === 4 && this.status === 200)
-          {
-            readingList = JSON.parse(this.responseText).books;
-          }
-        };
-
-        bs_xhr.send();
-
-        for (let i = 0; i < readingList.length; i++)
-        {
-          this.loadSingleBookFromFetch(readingList[i].title, readingList[i].location);
-        }
+        this.loadReadingList(bookUri.substr(10));
       }
       else {
         // Else, we assume it is a URL that XHR can handle.
@@ -482,6 +462,79 @@ class KthoomApp {
         this.readingStack_.changeToNextBook();
       }
     }
+  }
+
+  loadReadingList_(listUri) {
+    let readingList = [];
+    const bs_xhr = new XMLHttpRequest();
+    bs_xhr.open('GET', listUri, false);
+    bs_xhr.onreadystatechange = function ()
+    {
+      if (this.readyState === 4 && this.status === 200)
+      {
+        readingList = JSON.parse(this.responseText).books;
+      }
+    };
+    bs_xhr.send();
+    for (let i = 0; i < readingList.length; i++)
+    {
+      let this_book = Book.fromFetch(readingList[i].title, readingList[i].location, this, -1)
+          .then(this.readingStack_.addBook(this_book));
+      this.readingStack_.show(true);
+      console.log(this_book);
+    }
+  }
+
+
+  loadReadingList(listUri) {
+    let readingList = [];
+    const bs_xhr = new XMLHttpRequest();
+    bs_xhr.open('GET', listUri, false);
+    bs_xhr.onreadystatechange = function ()
+    {
+      if (this.readyState === 4 && this.status === 200)
+      {
+        readingList = JSON.parse(this.responseText).books;
+      }
+    };
+    bs_xhr.send();
+
+    const books = [];
+    let openedFirstBook = false;
+    let foundError = false;
+    let bookPromiseChain = Promise.resolve(true);
+    for (let i = 0; i < readingList.length; ++i) {
+      const xhr = new XMLHttpRequest();
+      xhr.open('GET', readingList[i].location, true);
+      bookPromiseChain = bookPromiseChain.then(() => {
+        return Book.fromXhr(readingList[i].title, xhr, -1)
+            .then(book => {
+          // Add the first book immediately so it unarchives asap.
+          if (!openedFirstBook) {
+            openedFirstBook = true;
+            this.readingStack_.addBook(book);
+            this.readingStack_.show(true);
+          } else {
+            books.push(book);
+          }
+        }).catch(() => {
+          foundError = true;
+          console.log(Error)
+        }).finally(() => {
+          // Ensures the chain keeps having results.
+          return true;
+        });
+      });
+    }
+
+    bookPromiseChain.then(() => {
+      if (books.length > 0) {
+        this.readingStack_.addBooks(books, false /* switchToFirst */);
+      }
+      if (foundError) {
+        alert('Could not open all books. See the console for more info.');
+      }
+    });
   }
 
   /**
