@@ -481,24 +481,29 @@ class KthoomApp {
     let openedFirstBook = false;
     let foundError = false;
     let bookPromiseChain = Promise.resolve(true);
-
-    const first_xhr = new XMLHttpRequest(); //Loading the first one separately, so that you have something to look at.
-    first_xhr.open('GET', readingList[0].location, true);
-    bookPromiseChain = bookPromiseChain.then(() => {
-      return Book.fromXhr(readingList[0].title, first_xhr, -1)
-          .then(book => {
-            // Add the first book immediately so it unarchives asap.
-              openedFirstBook = true;
-              this.readingStack_.addBook(book);
-              this.readingStack_.show(true);
-          }).catch(() => {
-            foundError = true;
-            console.log(Error)
-          }).finally(() => {
-            // Ensures the chain keeps having results.
-            return true;
-          });
-    });
+    for (let i = 0; i < readingList.length; ++i) {
+      const xhr = new XMLHttpRequest();
+      xhr.open('GET', readingList[i].location, !openedFirstBook); //Trying to get the first one to display faster
+      bookPromiseChain = bookPromiseChain.then(() => {
+        return Book.fromXhr(readingList[i].title, xhr, -1)
+            .then(book => {
+              // Add the first book immediately so it unarchives asap.
+              if (!openedFirstBook) {
+                openedFirstBook = true;
+                this.readingStack_.addBook(book);
+                this.readingStack_.show(true);
+              } else {
+                books.push(book);
+              }
+            }).catch(() => {
+              foundError = true;
+              console.log(Error)
+            }).finally(() => {
+              // Ensures the chain keeps having results.
+              return true;
+            });
+      });
+    }
 
 
     for (let i = 1; i < readingList.length; ++i) {
