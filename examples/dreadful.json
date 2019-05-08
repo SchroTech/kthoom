@@ -1,0 +1,6 @@
+{
+  "books": [
+    { "title":"Code Dread" , "location":"examples/codedread.cbz" },
+    { "title":"Code Dread 2" , "location":"examples/codedread2.cbz" }
+  ]
+}

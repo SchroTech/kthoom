@@ -200,7 +200,33 @@ class KthoomApp {
         kthoom.ipfs.loadHash(bookUri.substr(7));
       } else if (bookUri.indexOf('dweb:/ipfs/') === 0) {
         kthoom.ipfs.loadHash(bookUri.substr(11));
-      } else {
+      } else if (bookUri.indexOf('json:list:') === 0)
+      {
+        // In this case, we're going to read in a json list of books to prepopulate
+        // the book stack with a json file of books to read
+
+        let readingList = [];
+
+        const bs_xhr = new XMLHttpRequest();
+
+        bs_xhr.open('GET', bookUri.substr(10), false);
+
+        bs_xhr.onreadystatechange = function()
+        {
+          if (this.readyState === 4 && this.status === 200)
+          {
+            readingList = JSON.parse(this.responseText).books;
+          }
+        };
+
+        bs_xhr.send();
+
+        for (let i = 0; i < readingList.length; i++)
+        {
+          this.loadSingleBookFromFetch(readingList[i].title, readingList[i].location);
+        }
+      }
+      else {
         // Else, we assume it is a URL that XHR can handle.
         // TODO: Try fetch first?
         const xhr = new XMLHttpRequest();
