@@ -480,12 +480,12 @@ class KthoomApp {
     const books = [];
     let openedFirstBook = false;
     let foundError = false;
-    let bookPromiseChain = Promise.resolve(true);
+    let bookPromiseChain = Promise.resolve(false);
     for (let i = 0; i < readingList.length; ++i) {
       const xhr = new XMLHttpRequest();
-      xhr.open('GET', readingList[i].location, !openedFirstBook); //Trying to get the first one to display faster
+      xhr.open('GET', readingList[i].location, true); //Trying to get the first one to display faster
       bookPromiseChain = bookPromiseChain.then(() => {
-        return Book.fromXhr(readingList[i].title, xhr, -1)
+        return Book.fromXhr(readingList[i].title, xhr, -1, openedFirstBook)
             .then(book => {
               // Add the first book immediately so it unarchives asap.
               if (!openedFirstBook) {
@@ -495,25 +495,6 @@ class KthoomApp {
               } else {
                 books.push(book);
               }
-            }).catch(() => {
-              foundError = true;
-              console.log(Error)
-            }).finally(() => {
-              // Ensures the chain keeps having results.
-              return true;
-            });
-      });
-    }
-
-
-    for (let i = 1; i < readingList.length; ++i) {
-      const xhr = new XMLHttpRequest();
-      xhr.open('GET', readingList[i].location, true);
-      bookPromiseChain = bookPromiseChain.then(() => {
-        return Book.fromXhr(readingList[i].title, xhr, -1)
-            .then(book => {
-              // Add the first book immediately so it unarchives asap.
-                books.push(book);
             }).catch(() => {
               foundError = true;
               console.log(Error)
@@ -642,6 +623,7 @@ class KthoomApp {
       getElem('logo').setAttribute('style', 'display:none');
 
       this.currentBook_ = book;
+
       this.bookViewer_.setCurrentBook(book);
     }
   }

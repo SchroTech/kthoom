@@ -12,8 +12,8 @@ const LoadState = {
   LOADING: 1,
   LOADED: 2,
   LOADING_ERROR: 3,
+  LOADING_DEFERRED: 4,
 };
-
 const UnarchiveState = {
   NOT_UNARCHIVED: 0,
   READY_FOR_UNARCHIVING: 1,
@@ -61,6 +61,8 @@ export class Book {
     this.loadState_ = LoadState.NOT_LOADED;
     this.unarchiveState_ = UnarchiveState.NOT_UNARCHIVED;
 
+    this.deferredXHR = null;
+
     this.expectedSizeInBytes_ = 0;
     this.loadingPercentage_ = 0.0;
     this.unarchivingPercentage_ = 0.0;
@@ -97,17 +99,19 @@ export class Book {
     return this.pages_[i];
   }
   isReadyToUnarchive() { return this.unarchiveState_ === UnarchiveState.READY_FOR_UNARCHIVING; }
+  isDeffered() { return this.loadState_ ===  LoadState.LOADING_DEFERRED; }
 
   /**
    * Starts an XHR and progressively loads in the book.
    * @param {XMLHttpRequest} xhr An XMLHttpRequest object with the method, url and header defined.
    * @param {Number} expectedSize If -1, the total field from the XHR Progress event is used.
+   * @param {boolean} deferred Whether or not to deffer request
    */
-  loadFromXhr(xhr, expectedSize) {
+  loadFromXhr(xhr, expectedSize, deferred) {
     if (this.loadState_ !== LoadState.NOT_LOADED) {
       throw 'Cannot try to load via XHR when the Book is already loading or loaded';
     }
-
+    if (deferred){ this.loadState_ = LoadState.LOADING_DEFERRED; }
     this.expectedSizeInBytes_ = expectedSize;
 
     xhr.responseType = 'arraybuffer';
@@ -125,7 +129,10 @@ export class Book {
       const arrayBuffer = evt.target.response;
       this.setArrayBuffer(arrayBuffer, 1.0, expectedSize);
     };
-    xhr.send(null);
+    if (this.loadState_ === LoadState.LOADING_DEFERRED) {
+      this.deferredXHR = xhr;
+    }
+    else { xhr.send(null); }
   }
 
   loadFromFetch(url, init, expectedSize) {
@@ -326,12 +333,13 @@ Book.fromFile = function(file) {
  * @param {string} name The book name.
  * @param {XMLHttpRequest} xhr XHR ready with the method, url and header.
  * @param {number} expectedSize Unarchived size in bytes.
+ * @param {boolean} deferred whether or not to deffer loading
  * @return {Promise<Book>}
  */
-Book.fromXhr = function(name, xhr, expectedSize) {
+Book.fromXhr = function(name, xhr, expectedSize, deferred = false) {
   return new Promise((resolve, reject) => {
     const book = new Book(name);
-    book.loadFromXhr(xhr, expectedSize);
+    book.loadFromXhr(xhr, expectedSize, deferred);
     resolve(book);
   });
 };

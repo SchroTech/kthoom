@@ -396,6 +396,7 @@ export class BookViewer {
       this.currentBook_ = book;
       book.subscribe(this, (evt) => this.handleBookEvent_(evt));
       this.currentPageNum_ = 0;
+      if (this.currentBook_.isDeffered()) { this.currentBook_.deferredXHR.send(null); }
       this.setProgressMeter({label: 'Opening'});
       this.updateLayout();
 
